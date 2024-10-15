@@ -1,0 +1,129 @@
+#{
+#  "config": {
+#    "metricProject": "playground-data-engine-cfe4" # The project where the metric will be written
+#  },
+#  "targets": {
+#    "playground-data-engine-cfe4": { # The project where the buckets are located
+#      "aleh-test-bucket": [ # The bucket name
+#        "dbt_test_7161d699_88b0_497e_85c2_731aa938dea8", # The paths to folders (not objects) to scan for size
+#        "dbt_test_e3c0aca8_e903_4b1c_95b6_9829ade3819b/dag"
+#      ]
+#    }
+#  }
+#}
+
+main:
+  params: [args]
+  steps:
+    - assignVariables:
+        assign:
+          - metricProject: ${args.config.metricProject}
+    - loopOverBuckets:
+        for:
+          value: projectId
+          in: ${keys(args.targets)}
+          steps:
+            - logProjectId:
+                call: sys.log
+                args:
+                  data: ${"Processing project " + projectId}
+                  severity: WARNING
+            - logBucketNames:
+                call: sys.log
+                args:
+                  data: ${map.get(args.targets,projectId)}
+                  severity: WARNING
+            - parseBuckets:
+                for:
+                  value: bucketName
+                  in: ${keys(map.get(args.targets,projectId))}
+                  steps:
+                    - logPaths:
+                        call: sys.log
+                        args:
+                          data: ${args.targets[projectId][bucketName]}
+                          severity: WARNING
+                    - scanPaths:
+                        steps:
+                          - loopOverPaths:
+                              for:
+                                value: path
+                                in: ${args.targets[projectId][bucketName]}
+                                steps:
+                                  - initializeTotalSize:
+                                      assign:
+                                        - totalSize: 0
+                                  - listObjects:
+                                      call: list_objects
+                                      args:
+                                        bucketName: ${bucketName}
+                                        path: ${path}
+                                        pageToken: null
+                                        totalSize: ${totalSize}
+                                      result: totalSize
+                                  - writeMetricData:
+                                      call: http.post
+                                      args:
+                                        url: ${"https://monitoring.googleapis.com/v3/projects/" + metricProject + "/timeSeries"}
+                                        auth:
+                                          type: OAuth2
+                                          scopes: https://www.googleapis.com/auth/monitoring.write
+                                        headers:
+                                          "Content-Type": "application/json"
+                                        body:
+                                          timeSeries:
+                                            - metric:
+                                                type: "custom.googleapis.com/storage/folder_size_bytes"
+                                                labels:
+                                                  bucket: ${bucketName}
+                                                  path: ${path}
+                                                  project: ${projectId}
+                                              resource:
+                                                type: 'global'
+                                              metricKind: "GAUGE"
+                                              valueType: "INT64"
+                                              points:
+                                                - interval:
+                                                    endTime: ${time.format(sys.now())}
+                                                  value:
+                                                    int64Value: ${totalSize}
+                                      result: writeResult
+    - theEnd:
+        return: 'Done'
+
+list_objects:
+  params: [bucketName, path, pageToken, totalSize]
+  steps:
+    - listObjects:
+        call: googleapis.storage.v1.objects.list
+        args:
+          bucket: ${bucketName}
+          prefix: ${path}
+          pageToken: ${pageToken}
+        result: objectsList
+    - processItemsIfAny:
+        switch:
+          - condition: ${objectsList.items != null}
+            steps:
+              - processItems:
+                  for:
+                    value: item
+                    in: ${objectsList.items}
+                    steps:
+                      - addItemSize:
+                          assign:
+                            - totalSize: ${totalSize + int(item.size)}
+    - checkNextPageToken:
+        switch:
+          - condition: ${"nextPageToken" in objectsList}
+            steps:
+              - recurse:
+                  call: list_objects
+                  args:
+                    bucketName: ${bucketName}
+                    path: ${path}
+                    pageToken: ${objectsList.nextPageToken}
+                    totalSize: ${totalSize}
+                  result: totalSize
+    - returnTotalSize:
+        return: ${totalSize}
