@@ -38,7 +38,10 @@ An example of the payload is shown below:
 
 No permissions are handled automatically by Terraform for this Workflow. The following permissions are required:
 
-1. `roles/storage.objectViewer` - Required to list objects in the specified GCS folders.
+1. `roles/storage.objectViewer` - Required to list objects in the specified GCS folders - needs to be applied in every
+   project that contains the GCS folders to be monitored.
+2. `roles/monitoring.metricWriter` - Required to write the custom metric to the specified project - needs to be applied
+   to the project where the metric is to be written.
 
 The workflow performs only one api call: `googleapis.storage.v1.objects.list`  to list objects in the specified GCS folders.
 
