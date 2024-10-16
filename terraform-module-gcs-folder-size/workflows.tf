@@ -37,3 +37,7 @@ resource "google_workflows_workflow" "gcs_folder_size" {
 
   source_contents = file("${path.module}/../workflow/gcs-folder-size-metric.yaml")
 }
+
+output "gcs_folder_size_workflow" {
+  value = google_service_account.gcs_folder_size
+}
