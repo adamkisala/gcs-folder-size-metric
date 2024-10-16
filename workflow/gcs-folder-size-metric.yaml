@@ -1,12 +1,12 @@
 #{
 #  "config": {
-#    "metricProject": "playground-data-engine-cfe4" # The project where the metric will be written
+#    "metricProject": "my-custom-monitoring-project-id"
 #  },
 #  "targets": {
-#    "playground-data-engine-cfe4": { # The project where the buckets are located
-#      "aleh-test-bucket": [ # The bucket name
-#        "dbt_test_7161d699_88b0_497e_85c2_731aa938dea8", # The paths to folders (not objects) to scan for size
-#        "dbt_test_e3c0aca8_e903_4b1c_95b6_9829ade3819b/dag"
+#    "my-custom-project-for-dev": {
+#      "some-storage-bucket-name": [
+#        "lets_monitor_this_folder",
+#        "also_this_folder/but_only_this_subfolder"
 #      ]
 #    }
 #  }
