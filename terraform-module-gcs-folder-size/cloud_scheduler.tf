@@ -56,3 +56,7 @@ resource "google_cloud_scheduler_job" "gcs_folder_size_workflow_invoker" {
     }
   }
 }
+
+output "gcs_folder_size_workflow_invoker_service_account" {
+  value = google_service_account.gcs_folder_size_workflow_invoker
+}
