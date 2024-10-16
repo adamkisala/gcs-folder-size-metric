@@ -100,7 +100,7 @@ list_objects:
           bucket: ${bucketName}
           prefix: ${path}
           pageToken: ${pageToken}
-          maxResults: 10
+          maxResults: 100
         result: objectsList
     - processItemsIfAny:
         switch:
